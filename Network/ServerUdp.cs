@@ -34,7 +34,7 @@ namespace Network
         public override void Send(byte[] buffer, IPEndPoint ep)
         {
             udp.Send(buffer, buffer.Length, ep);
-            base.Send(buffer, ep);
+            onSend?.Invoke(buffer.LongLength, ep);
         }
 
         public override void Shutdown()

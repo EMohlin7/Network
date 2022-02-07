@@ -61,15 +61,15 @@ namespace Network
             udp.Send(buffer, size);
         }
 
-        public override void SendFile(string file, byte[] preBuffer = null, byte[] postBuffer = null, TransmitFileOptions flags = 0)
+       /* public override void SendFile(string file, byte[] preBuffer = null, byte[] postBuffer = null, TransmitFileOptions flags = 0)
         {
             udp.Client.SendFile(file, preBuffer, postBuffer, flags);
-        }
+        }*/
 
-        public override async Task ReceiveAsync()
+        public override async Task<ReceiveResult> ReceiveAsync()
         {
             var t = await udp.ReceiveAsync();
-            onReceive?.Invoke(new ReceiveResult(t.Buffer, t.Buffer.Length, t.RemoteEndPoint, SocketType.Dgram));
+            return new ReceiveResult(t.Buffer, t.Buffer.Length, t.RemoteEndPoint, SocketType.Dgram);
         }
 
         public override void Shutdown()

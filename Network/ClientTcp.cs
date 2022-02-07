@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using TcpMethods;
 
 namespace Network
 {
@@ -50,24 +51,20 @@ namespace Network
             }
         }
 
-        public override void Send(byte[] buffer, int size)
+        public override void Send(byte[] buffer, int bufferSize)
         {
-            var stream = client.GetStream();
-            stream.Write(buffer, 0, size);
+            Tcp.Send(buffer, client, onSend);
         }
 
-        public override void SendFile(string file, byte[] preBuffer = null, byte[] postBuffer = null, TransmitFileOptions flags = 0)
+        public Task SendFile(string file, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-           client.Client.SendFile(file, preBuffer, postBuffer, flags);
+           return Tcp.SendFileAsync(file, client, bufferSize, onSend, offset, end, preBuffer, postBuffer);
         }
 
 
-        public override async Task ReceiveAsync()
+        public override async Task<ReceiveResult> ReceiveAsync()
         {
-            byte[] buffer = new byte[bufferSize];
-            int bytes = await client.Client.ReceiveAsync(buffer, SocketFlags.None);
-            
-            onReceive?.Invoke(new ReceiveResult(buffer, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
+            return await Tcp.ReceiveAsync(client, bufferSize, new System.Threading.CancellationToken());
         }
       
 

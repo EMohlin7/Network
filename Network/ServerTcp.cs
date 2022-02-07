@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using System.Collections.Generic;
+using TcpMethods;
 using System.IO;
 
 namespace Network
@@ -65,31 +66,20 @@ namespace Network
         
         public Task<ReceiveResult> ReceiveAsync(IPEndPoint ep)
         {
-            return ReceiveAsync(GetClient(ep), new CancellationToken());
+            return Tcp.ReceiveAsync(GetClient(ep), bufferSize, new CancellationToken());
         }
         public Task<ReceiveResult> ReceiveAsync(IPEndPoint ep, CancellationToken token)
         {
-            return ReceiveAsync(GetClient(ep), token);
+            return Tcp.ReceiveAsync(GetClient(ep), bufferSize, token);
         }
 
         public async Task<ReceiveResult> ReceiveAsync(TcpClient client)
         {
             if(client == null)
                 return ReceiveResult.Failed();
-            return await ReceiveAsync(client, new CancellationToken());
+            return await Tcp.ReceiveAsync(client, bufferSize, new CancellationToken());
         }
-        public async Task<ReceiveResult> ReceiveAsync(TcpClient client, CancellationToken token)
-        { 
-            byte[] buffer = new byte[bufferSize];
-            var stream = client.GetStream();
-            try{
-                int bytes = await stream.ReadAsync(buffer, 0, bufferSize, token);
-                byte[] received = new byte[bytes];
-                Array.Copy(buffer, received, bytes);
-                return (new ReceiveResult(received, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
-            }
-            catch(System.IO.IOException){return ReceiveResult.Failed();}
-        }
+        
 #endregion
 
 #region Send
@@ -98,76 +88,21 @@ namespace Network
             var client = GetClient(ep);
             if(client == null)
                 return;
-            var stream = client.GetStream();
-            stream.Write(buffer, 0, buffer.Length);
-            base.Send(buffer,ep);
+            Tcp.Send(buffer, client, onSend);
         }
 
         public void Send(byte[] buffer, TcpClient client)
         {
             if(client == null)
                 return;
-            var stream = client.GetStream();
-            stream.Write(buffer, 0, buffer.Length);
-            base.Send(buffer, client.Client.RemoteEndPoint as IPEndPoint);
+            Tcp.Send(buffer, client, onSend);
         }
 
         public Task SendFile(string file, IPEndPoint ep, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-            return SendFile(file, GetClient(ep), offset, end, preBuffer, postBuffer);
+            return Tcp.SendFileAsync(file, GetClient(ep), bufferSize, onSend, offset, end, preBuffer, postBuffer);
         }
-        public async Task SendFile(string file, TcpClient client, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
-        {
-            if(client == null)
-                return;
-            FileStream fs = File.OpenRead(file);
-            NetworkStream ns = client.GetStream();
-
-            Task sendPreBufferTask = Task.CompletedTask;
-            long bytesSent = 0;
-            try{
-                if(preBuffer != null)
-                {
-                    sendPreBufferTask = ns.WriteAsync(preBuffer, 0, preBuffer.Length);
-                }
-                            
-                long fileSize = 0;
-                if(end == null || end.Value < offset)
-                    fileSize = new FileInfo(file).Length; 
-                else
-                    fileSize = end.Value - offset;
-                var buffer = new byte[fileSize > bufferSize ? bufferSize : fileSize];
-                long totalReadBytes = 0;
-                
-                fs.Position = offset;
-
-                await sendPreBufferTask;
-                bytesSent = preBuffer?.Length ?? 0; 
-                do
-                {
-                    int readBytes = await fs.ReadAsync(buffer, 0, buffer.Length);
-                    if(readBytes == 0)
-                        break;
-                    await ns.WriteAsync(buffer, 0, readBytes);
-                    totalReadBytes += readBytes;
-                    bytesSent += readBytes;
-                }while(totalReadBytes < fileSize);
-                    
-                if(postBuffer != null)
-                {
-                    await ns.WriteAsync(postBuffer, 0, postBuffer.Length);
-                    bytesSent += postBuffer.Length;
-                }
-            }catch(IOException){
-
-            }
-            finally
-            {
-                fs.Dispose(); 
-                fs.Close(); 
-                onSend?.Invoke(bytesSent, client.Client.RemoteEndPoint as IPEndPoint);
-            }
-        }
+        
         public async Task SendFileToMultiple(string file, TcpClient[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             Task[] tasks = new Task[clients.Length];
@@ -175,7 +110,7 @@ namespace Network
             {
                 for(int i = 0; i < tasks.Length; ++i)
                 {
-                    tasks[i] = SendFile(file, clients[i], offset, end, preBuffer, postBuffer);
+                    tasks[i] = Tcp.SendFileAsync(file, clients[i], bufferSize, onSend, offset, end, preBuffer, postBuffer);
                 }
                 await Task.WhenAll(tasks);
             }

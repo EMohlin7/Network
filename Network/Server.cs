@@ -50,10 +50,8 @@ namespace Network
         }
 
         
-        public virtual void Send(byte[] buffer, IPEndPoint ep)
-        {
-            onSend?.Invoke(buffer.LongLength, ep);
-        }
+        public abstract void Send(byte[] buffer, IPEndPoint ep);
+        
     
         public abstract void Shutdown();
     }

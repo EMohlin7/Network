@@ -12,8 +12,8 @@ namespace Network
         public int localPort {private set; get;}
         public bool connected {private set; get;}
         protected int bufferSize {private set; get;}
-        public Action<ReceiveResult> onReceive;
         public Action onShutdown;
+        public Action<long, IPEndPoint> onSend;
 
         public Client(int bufferSize)
         {
@@ -29,10 +29,10 @@ namespace Network
             connected = true;
         }
 
-        public abstract Task ReceiveAsync();
+        public abstract Task<ReceiveResult> ReceiveAsync();
         public abstract void Send(byte[] buffer, int size);
 
-        public abstract void SendFile(string file, byte[] preBuffer, byte[] postBuffer, TransmitFileOptions flags);
+        //public abstract void SendFile(string file, byte[] preBuffer, byte[] postBuffer, TransmitFileOptions flags);
 
         public virtual void Shutdown()
         {
