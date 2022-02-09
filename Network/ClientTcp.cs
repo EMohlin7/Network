@@ -55,6 +55,10 @@ namespace Network
         {
             Tcp.Send(buffer, client, onSend);
         }
+        public Task SendAsync(byte[] buffer, int bufferSize)
+        {
+            return Tcp.SendAsync(buffer, client, onSend);
+        }
 
         public Task SendFile(string file, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {

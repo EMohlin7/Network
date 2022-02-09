@@ -87,8 +87,16 @@ namespace Network
         {
             var client = GetClient(ep);
             if(client == null)
-                return;
+                throw new NullReferenceException("No client with that IPEndPoint exists");
             Tcp.Send(buffer, client, onSend);
+        }
+
+        public Task SendAsync(byte[] buffer, IPEndPoint ep)
+        {
+            var client = GetClient(ep);
+            if(client == null)
+                throw new NullReferenceException("No client with that IPEndPoint exists");
+            return Tcp.SendAsync(buffer, client, onSend);
         }
 
         public void Send(byte[] buffer, TcpClient client)
