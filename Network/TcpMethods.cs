@@ -18,16 +18,15 @@ namespace TcpMethods
             int bytes = 0;
             var stream = client.GetStream();
             //List<byte> receivedBytes = new List<byte>();
-            try{
-                
-                
+            try{                
                 bytes = await stream.ReadAsync(buffer, 0, bufferSize, token);
-                
+                var received = new byte[bytes];
+                Array.Copy(buffer, received, bytes);
                 //totalBytes += bytes;
                 //receivedBytes.AddRange(buffer);
                 
                 
-                return (new ReceiveResult(buffer, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
+                return (new ReceiveResult(received, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
             }
             catch(System.IO.IOException){return ReceiveResult.Failed();}
         }

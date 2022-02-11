@@ -21,7 +21,7 @@ namespace Network
             {
                 if(connected)
                     Shutdown();
-                client = new TcpClient();
+                client = new TcpClient(AddressFamily.InterNetwork);
                 await client.ConnectAsync(IPAddress.Parse(remoteIP), remotePort);
                 OnConnect(remoteIP, remotePort, (client.Client.LocalEndPoint as IPEndPoint).Port);
                 return true;
