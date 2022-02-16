@@ -18,8 +18,13 @@ namespace TcpMethods
             int bytes = 0;
             var stream = client.GetStream();
             //List<byte> receivedBytes = new List<byte>();
-            try{                
-                bytes = await stream.ReadAsync(buffer, 0, bufferSize, token);
+            try{      
+
+                //do
+                //{          
+                    bytes = await stream.ReadAsync(buffer, 0, bufferSize, token);
+                    
+               // }while(bytes == 0);
                 var received = new byte[bytes];
                 Array.Copy(buffer, received, bytes);
                 //totalBytes += bytes;
