@@ -10,19 +10,26 @@ namespace Network
         private UdpClient udp;
         public ServerUdp(int bufferSize) : base(bufferSize, 1) { }
         
-        public override Task StartListening(int port)
+        public override bool StartListening(int port)
         {
+            //Check if the server is already listening
             if(udp != null)
             {
                 Shutdown();
-                return Task.CompletedTask;
+                return true;
             }
             
-            udp = new UdpClient(port, AddressFamily.InterNetwork);
+            try{
+                udp = new UdpClient(port, AddressFamily.InterNetwork);
+            }
+            catch{
+                udp = null; 
+                return false;
+            }
 
             //För att inte få ett error när man försöker skicka till en socket som blivit avstängd
             udp.Client.IOControl(-1744830452, new byte[1], new byte[1]);
-            return Task.CompletedTask;
+            return true;
         }
 
         public async Task<ReceiveResult> ReceiveAsync()

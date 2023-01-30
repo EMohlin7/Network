@@ -13,9 +13,11 @@ namespace Network
     {
         private TcpListener listener;   
         public int connectedClients {get => clients.Count;}
-        private List<TcpClient> clients;      
+        public int numWaitingClients {get => waitingClients.Count;}
+        private List<TcpClient> clients = new List<TcpClient>();
+        private Queue<TcpClient> waitingClients = new Queue<TcpClient>(); 
         public Action<TcpClient> onClientClosed;
-        public Action<TcpClient> onAccept;
+        //public Action<TcpClient> onAccept;
         public bool listening {private set; get;}
         public int maxConnections;
 
@@ -24,28 +26,35 @@ namespace Network
         public ServerTcp(int maxConnections, int bufferSize) : base(bufferSize, maxConnections)
         {
             this.maxConnections = maxConnections;
-            clients = new List<TcpClient>();
         }
 
-        public override async Task StartListening(int port)
+        public override bool StartListening(int port)
         {
-            listener = new TcpListener(IPAddress.Any, port);
-            listener.Start(maxConnections);
+            try{
+                listener = new TcpListener(IPAddress.Any, port);
+                listener.Start(maxConnections);
+            }
+            catch{return false;}
+
             listening = true;
-            await StartAccept(listener);
+            Thread th = new Thread(StartAccept);
+            th.IsBackground = true;
+            th.Start(listener);
+            return true;
         }
 #endregion
 
 #region Accept
-        private async Task StartAccept(TcpListener listener)
+        private void StartAccept(object tcpListener)
         {
+            var listener = (TcpListener)tcpListener;
             try
             {
                 while(true)
                 {
                     if(listening && connectedClients < maxConnections)
                     {
-                        var client = await listener.AcceptTcpClientAsync();
+                        var client = listener.AcceptTcpClient();
                         Accept(client);
                     }
                 }
@@ -56,9 +65,16 @@ namespace Network
 
         private void Accept(TcpClient client)
         {
-            clients.Add(client); 
+            //clients.Add(client); 
             //Interlocked.Increment(ref connectedClients);   
-            onAccept?.Invoke(client);
+            waitingClients.Enqueue(client);
+        }
+
+        public TcpClient FetchWaitingClient()
+        {
+            bool success = waitingClients.TryDequeue(out TcpClient client);
+            clients.Add(client);
+            return success ? client : null;
         }
 #endregion
 

@@ -38,7 +38,7 @@ namespace Network
             this.bufferSize = bufferSize;
         }
 
-        public abstract Task StartListening(int port);
+        public abstract bool StartListening(int port);
         
 
         public void SendToMultiple(byte[] buffer, IPEndPoint[] ep)
