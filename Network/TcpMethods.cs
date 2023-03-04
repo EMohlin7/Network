@@ -34,6 +34,7 @@ namespace TcpMethods
                 return (new ReceiveResult(received, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
             }
             catch(System.IO.IOException){return ReceiveResult.Failed();}
+            catch (NullReferenceException) { return ReceiveResult.Failed(); }
         }
 
 

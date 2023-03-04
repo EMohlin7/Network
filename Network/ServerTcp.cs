@@ -16,8 +16,8 @@ namespace Network
         public int numWaitingClients {get => waitingClients.Count;}
         private List<TcpClient> clients = new List<TcpClient>();
         private Queue<TcpClient> waitingClients = new Queue<TcpClient>(); 
-        public Action<TcpClient> onClientClosed;
-        //public Action<TcpClient> onAccept;
+        public Action<IPEndPoint> onClientClosed;
+        public Action<TcpClient> onAccept;
         public bool listening {private set; get;}
         public int maxConnections;
 
@@ -54,8 +54,8 @@ namespace Network
                 {
                     if(listening && connectedClients < maxConnections)
                     {
-                        var client = listener.AcceptTcpClient();
-                        Accept(client);
+                        TcpClient client = listener.AcceptTcpClient();
+                        ThreadPool.QueueUserWorkItem(Accept, client);
                     }
                 }
             }
@@ -63,18 +63,22 @@ namespace Network
             catch(SocketException){return;}
         }
 
-        private void Accept(TcpClient client)
+        private void Accept(object tcpClient)
         {
             //clients.Add(client); 
-            //Interlocked.Increment(ref connectedClients);   
+            //Interlocked.Increment(ref connectedClients);
+            TcpClient client = (TcpClient)tcpClient;
             waitingClients.Enqueue(client);
+            onAccept?.Invoke(client);
         }
 
-        public TcpClient FetchWaitingClient()
+        public bool FetchWaitingClient(out TcpClient client)
         {
-            bool success = waitingClients.TryDequeue(out TcpClient client);
-            clients.Add(client);
-            return success ? client : null;
+            bool success = waitingClients.TryDequeue(out TcpClient c);
+            client = c;
+            if(success)
+                clients.Add(client);
+            return success;
         }
 #endregion
 
@@ -152,18 +156,20 @@ namespace Network
 #region Disconnect
         public void CloseClientSocket(TcpClient client)
         {
+            IPEndPoint ep = null;
             try{
+                ep = client?.Client?.RemoteEndPoint as IPEndPoint;
                 client.Dispose();
                 client.Close();
 
-            }catch(Exception){} //Exception om socketen redan är stängd
+            }catch(NullReferenceException){} //Exception om socketen redan är stängd
             finally
             {
                 if(client != null)
                 {
                     //Interlocked.Decrement(ref connectedClients);
                     clients.Remove(client);
-                    onClientClosed?.Invoke(client);
+                    onClientClosed?.Invoke(ep);
                 }                
             }
         }
