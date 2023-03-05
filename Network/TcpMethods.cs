@@ -16,13 +16,13 @@ namespace TcpMethods
             byte[] buffer = new byte[bufferSize];
             //int totalBytes = 0;
             int bytes = 0;
-            var stream = client.GetStream();
+            
             //List<byte> receivedBytes = new List<byte>();
-            try{      
-
+            try{
+                var stream = client.GetStream();
                 //do
                 //{          
-                    bytes = await stream.ReadAsync(buffer, 0, bufferSize, token);
+                bytes = await stream.ReadAsync(buffer, 0, bufferSize, token);
                     
                // }while(bytes == 0);
                 var received = new byte[bytes];
@@ -34,7 +34,8 @@ namespace TcpMethods
                 return (new ReceiveResult(received, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
             }
             catch(System.IO.IOException){return ReceiveResult.Failed();}
-            catch (NullReferenceException) { return ReceiveResult.Failed(); }
+            catch(NullReferenceException) { return ReceiveResult.Failed(); }
+            catch(InvalidOperationException) { return ReceiveResult.Failed(); }
         }
 
 

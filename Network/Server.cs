@@ -38,7 +38,13 @@ namespace Network
             this.bufferSize = bufferSize;
         }
 
-        public abstract bool StartListening(int port);
+        /// <summary>
+        /// Start listening for incoming connections
+        /// </summary>
+        /// <param name="port">The port to listen on</param>
+        /// <param name="err">Returns the error if the server failed to start, otherwise null</param>
+        /// <returns>True if the server succesfully started listening for incoming connections, otherwise false</returns>
+        public abstract bool StartListening(int port, out string err);
         
 
         public void SendToMultiple(byte[] buffer, IPEndPoint[] ep)

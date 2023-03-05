@@ -17,7 +17,7 @@ namespace Network
         private List<TcpClient> clients = new List<TcpClient>();
         private Queue<TcpClient> waitingClients = new Queue<TcpClient>(); 
         public Action<IPEndPoint> onClientClosed;
-        public Action<TcpClient> onAccept;
+        public Action clientAccepted;
         public bool listening {private set; get;}
         public int maxConnections;
 
@@ -28,13 +28,24 @@ namespace Network
             this.maxConnections = maxConnections;
         }
 
-        public override bool StartListening(int port)
+        /// <summary>
+        /// Start listening for incoming connections
+        /// </summary>
+        /// <param name="port">The port to listen on</param>
+        /// <param name="err">Returns the error if the server failed to start, otherwise null</param>
+        /// <returns>True if the server succesfully started listening for incoming connections, otherwise false</returns>
+        public override bool StartListening(int port, out string err)
         {
+            err = null;
             try{
                 listener = new TcpListener(IPAddress.Any, port);
                 listener.Start(maxConnections);
             }
-            catch{return false;}
+            catch(Exception e)
+            {
+                err = e.ToString();
+                return false;
+            }
 
             listening = true;
             Thread th = new Thread(StartAccept);
@@ -52,9 +63,10 @@ namespace Network
             {
                 while(true)
                 {
-                    if(listening && connectedClients < maxConnections)
+                    if(listening && connectedClients+numWaitingClients < maxConnections)
                     {
                         TcpClient client = listener.AcceptTcpClient();
+                        //Accept(client);
                         ThreadPool.QueueUserWorkItem(Accept, client);
                     }
                 }
@@ -69,7 +81,7 @@ namespace Network
             //Interlocked.Increment(ref connectedClients);
             TcpClient client = (TcpClient)tcpClient;
             waitingClients.Enqueue(client);
-            onAccept?.Invoke(client);
+            clientAccepted?.Invoke();
         }
 
         public bool FetchWaitingClient(out TcpClient client)
@@ -126,12 +138,12 @@ namespace Network
             Tcp.Send(buffer, client, onSend);
         }
 
-        public Task SendFile(string file, IPEndPoint ep, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public Task SendFileAsync(string file, IPEndPoint ep, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             return Tcp.SendFileAsync(file, GetClient(ep), bufferSize, onSend, offset, end, preBuffer, postBuffer);
         }
         
-        public async Task SendFileToMultiple(string file, TcpClient[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public async Task SendFileToMultipleAsync(string file, TcpClient[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             Task[] tasks = new Task[clients.Length];
             try
@@ -144,12 +156,12 @@ namespace Network
             }
             catch (SocketException){}
         }
-        public Task SendFileToMultiple(string file, IPEndPoint[] ep, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public Task SendFileToMultipleAsync(string file, IPEndPoint[] ep, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             TcpClient[] clients = new TcpClient[ep.Length];
             for(int i = 0; i < clients.Length; ++i)
                 clients[i] = GetClient(ep[i]);
-            return SendFileToMultiple(file, clients, offset, end, preBuffer, postBuffer);
+            return SendFileToMultipleAsync(file, clients, offset, end, preBuffer, postBuffer);
         }
 #endregion
 

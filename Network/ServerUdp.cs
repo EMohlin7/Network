@@ -9,9 +9,16 @@ namespace Network
     {
         private UdpClient udp;
         public ServerUdp(int bufferSize) : base(bufferSize, 1) { }
-        
-        public override bool StartListening(int port)
+
+        /// <summary>
+        /// Start listening for incoming connections
+        /// </summary>
+        /// <param name="port">The port to listen on</param>
+        /// <param name="err">Returns the error if the server failed to start, otherwise null</param>
+        /// <returns>True if the server succesfully started listening for incoming connections, otherwise false</returns>
+        public override bool StartListening(int port, out string err)
         {
+            err = null;
             //Check if the server is already listening
             if(udp != null)
             {
@@ -22,7 +29,9 @@ namespace Network
             try{
                 udp = new UdpClient(port, AddressFamily.InterNetwork);
             }
-            catch{
+            catch(Exception e)
+            {
+                err = e.Message;
                 udp = null; 
                 return false;
             }
