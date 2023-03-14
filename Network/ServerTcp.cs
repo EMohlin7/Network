@@ -123,26 +123,39 @@ namespace Network
             Tcp.Send(buffer, client, onSend);
         }
 
-        public Task SendAsync(byte[] buffer, IPEndPoint ep)
-        {
-            var client = GetClient(ep);
-            if(client == null)
-                throw new NullReferenceException("No client with that IPEndPoint exists");
-            return Tcp.SendAsync(buffer, client, onSend);
-        }
-
         public void Send(byte[] buffer, TcpClient client)
         {
             if(client == null)
-                return;
+                throw new NullReferenceException("TcpClient is null");
             Tcp.Send(buffer, client, onSend);
+        }
+
+
+
+        public Task SendAsync(byte[] buffer, IPEndPoint ep)
+        {
+            var client = GetClient(ep);
+            if (client == null)
+                throw new NullReferenceException("No client with that IPEndPoint exists");
+            return Tcp.SendAsync(buffer, client, onSend);
+        }
+        public Task SendAsync(byte[] buffer, TcpClient client)
+        {
+            
+            if (client == null)
+                throw new NullReferenceException("TcpClient is null");
+            return Tcp.SendAsync(buffer, client, onSend);
         }
 
         public Task SendFileAsync(string file, IPEndPoint ep, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             return Tcp.SendFileAsync(file, GetClient(ep), bufferSize, onSend, offset, end, preBuffer, postBuffer);
         }
-        
+        public Task SendFileAsync(string file, TcpClient client, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        {
+            return Tcp.SendFileAsync(file, client, bufferSize, onSend, offset, end, preBuffer, postBuffer);
+        }
+
         public async Task SendFileToMultipleAsync(string file, TcpClient[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             Task[] tasks = new Task[clients.Length];
@@ -202,10 +215,7 @@ namespace Network
         }
 #endregion
 
-        public int ConnectedClients()
-        {
-            return connectedClients;
-        }
+       
         public TcpClient GetClient(IPEndPoint ep)
         {   
             if(ep == null)
