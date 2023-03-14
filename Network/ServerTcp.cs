@@ -75,7 +75,7 @@ namespace Network
             catch(SocketException){return;}
         }
 
-        private void Accept(object tcpClient)
+        protected virtual void Accept(object tcpClient)
         {
             //clients.Add(client); 
             //Interlocked.Increment(ref connectedClients);
