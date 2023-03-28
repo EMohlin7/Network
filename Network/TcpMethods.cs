@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace TcpMethods
 {
-    public static class Tcp
+    internal static class Tcp
     {
-        public static async Task<ReceiveResult> ReceiveAsync(TcpClient client, int bufferSize, CancellationToken token)
+        public static async Task<TcpReceiveResult> ReceiveAsync(TcpClient client, int bufferSize, CancellationToken token)
         { 
             byte[] buffer = new byte[bufferSize];
             //int totalBytes = 0;
@@ -31,11 +31,16 @@ namespace TcpMethods
                 //receivedBytes.AddRange(buffer);
                 
                 
-                return (new ReceiveResult(received, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream));
+                return new TcpReceiveResult(received, bytes, client);
             }
-            catch(System.IO.IOException){return ReceiveResult.Failed();}
-            catch(NullReferenceException) { return ReceiveResult.Failed(); }
-            catch(InvalidOperationException) { return ReceiveResult.Failed(); }
+            catch(Exception e ) when (ExceptionFilter(e)) {return TcpReceiveResult.Failed(client);}
+        }
+        private static bool ExceptionFilter(Exception e)
+        {
+            if (e is IOException || e is NullReferenceException || e is InvalidOperationException)
+                return true;
+
+            return false;
         }
 
 

@@ -5,27 +5,7 @@ using System.Threading.Tasks;
 
 namespace Network
 {
-    public struct ReceiveResult
-    {
-        public static ReceiveResult Failed()
-        {
-            return new ReceiveResult(new byte[0], 0, null, SocketType.Unknown, false);
-        }
-
-        public ReceiveResult(byte[] buffer, int size, IPEndPoint remoteEndPoint, SocketType socketType, bool success = true)
-        {
-            this.buffer = buffer;
-            this.size = size;
-            this.remoteEndPoint = remoteEndPoint;
-            this.socketType = socketType;
-            this.success = success;
-        }
-        public readonly bool success;
-        public readonly byte[] buffer;
-        public readonly int size;
-        public readonly IPEndPoint remoteEndPoint;
-        public readonly SocketType socketType;
-    }
+    
 
     public abstract class Server
     {

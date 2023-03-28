@@ -8,7 +8,7 @@ namespace Network
 {
     public class ClientTcp : Client
     {        
-        private TcpClient client;
+        public TcpClient client { private set; get; }
         
         public ClientTcp(int bufferSize) : base(bufferSize) 
         {
@@ -68,7 +68,7 @@ namespace Network
 
         public override async Task<ReceiveResult> ReceiveAsync()
         {
-            return await Tcp.ReceiveAsync(client, bufferSize, new System.Threading.CancellationToken());
+            return (await Tcp.ReceiveAsync(client, bufferSize, new System.Threading.CancellationToken())).CreateRegRR();
         }
       
 

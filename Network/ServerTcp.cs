@@ -11,6 +11,8 @@ namespace Network
 {
     public class ServerTcp : Server
     {
+        private Mutex closeMutex = new Mutex(false);
+        private Mutex fetchMutex = new Mutex(false);
         private TcpListener listener;   
         public int connectedClients {get => clients.Count;}
         public int numWaitingClients {get => waitingClients.Count;}
@@ -77,38 +79,44 @@ namespace Network
 
         protected virtual void Accept(object tcpClient)
         {
-            //clients.Add(client); 
-            //Interlocked.Increment(ref connectedClients);
             TcpClient client = (TcpClient)tcpClient;
             waitingClients.Enqueue(client);
             clientAccepted?.Invoke();
         }
 
-        public bool FetchWaitingClient(out TcpClient client)
+        public bool FetchWaitingClient(out TcpClient client, int timeout)
         {
+            if(!fetchMutex.WaitOne(timeout))
+            {
+                client = null;
+                return false;
+            }
+
             bool success = waitingClients.TryDequeue(out TcpClient c);
             client = c;
             if(success)
                 clients.Add(client);
+
+            fetchMutex.ReleaseMutex();
             return success;
         }
 #endregion
 
 #region Receive
         
-        public Task<ReceiveResult> ReceiveAsync(IPEndPoint ep)
+        public Task<TcpReceiveResult> ReceiveAsync(IPEndPoint ep)
         {
             return Tcp.ReceiveAsync(GetClient(ep), bufferSize, new CancellationToken());
         }
-        public Task<ReceiveResult> ReceiveAsync(IPEndPoint ep, CancellationToken token)
+        public Task<TcpReceiveResult> ReceiveAsync(IPEndPoint ep, CancellationToken token)
         {
             return Tcp.ReceiveAsync(GetClient(ep), bufferSize, token);
         }
 
-        public async Task<ReceiveResult> ReceiveAsync(TcpClient client)
+        public async Task<TcpReceiveResult> ReceiveAsync(TcpClient client)
         {
             if(client == null)
-                return ReceiveResult.Failed();
+                return TcpReceiveResult.Failed(client);
             return await Tcp.ReceiveAsync(client, bufferSize, new CancellationToken());
         }
         
@@ -120,8 +128,9 @@ namespace Network
             var client = GetClient(ep);
             if(client == null)
                 throw new NullReferenceException("No client with that IPEndPoint exists");
-            Tcp.Send(buffer, client, onSend);
+            Send(buffer, client);
         }
+        
 
         public void Send(byte[] buffer, TcpClient client)
         {
@@ -137,7 +146,7 @@ namespace Network
             var client = GetClient(ep);
             if (client == null)
                 throw new NullReferenceException("No client with that IPEndPoint exists");
-            return Tcp.SendAsync(buffer, client, onSend);
+            return SendAsync(buffer, client);
         }
         public Task SendAsync(byte[] buffer, TcpClient client)
         {
@@ -149,7 +158,8 @@ namespace Network
 
         public Task SendFileAsync(string file, IPEndPoint ep, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-            return Tcp.SendFileAsync(file, GetClient(ep), bufferSize, onSend, offset, end, preBuffer, postBuffer);
+            var client = GetClient(ep);
+            return SendFileAsync(file, client, offset, end, preBuffer, postBuffer);
         }
         public Task SendFileAsync(string file, TcpClient client, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
@@ -179,8 +189,10 @@ namespace Network
 #endregion
 
 #region Disconnect
-        public void CloseClientSocket(TcpClient client)
+        public void CloseClientSocket(TcpClient client, int timeout)
         {
+            if (!closeMutex.WaitOne(timeout))
+                return;
             IPEndPoint ep = null;
             try{
                 ep = client?.Client?.RemoteEndPoint as IPEndPoint;
@@ -194,6 +206,8 @@ namespace Network
                 {
                     //Interlocked.Decrement(ref connectedClients);
                     clients.Remove(client);
+                    closeMutex.ReleaseMutex();
+              
                     onClientClosed?.Invoke(ep);
                 }                
             }
@@ -209,9 +223,8 @@ namespace Network
             StopListening();
             foreach(var c in clients.ToArray())
             {
-                CloseClientSocket(c);
+                CloseClientSocket(c, -1);
             }
-                
         }
 #endregion
 
