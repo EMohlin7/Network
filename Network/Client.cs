@@ -30,7 +30,7 @@ namespace Network
         }
 
         public abstract Task<ReceiveResult> ReceiveAsync();
-        public abstract void Send(byte[] buffer, int size);
+        public abstract void Send(byte[] buffer);
 
         //public abstract void SendFile(string file, byte[] preBuffer, byte[] postBuffer, TransmitFileOptions flags);
 

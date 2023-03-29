@@ -35,13 +35,13 @@ namespace Network
     {
         public ReceiveResult CreateRegRR()
         {
-            return new ReceiveResult(buffer, size, client.Client.RemoteEndPoint as IPEndPoint, socketType, success);
+            return new ReceiveResult(buffer, size, client.client.Client.RemoteEndPoint as IPEndPoint, socketType, success);
         }
-        public static TcpReceiveResult Failed(TcpClient client)
+        public static TcpReceiveResult Failed(ClientTcp client)
         {
             return new TcpReceiveResult(ReceiveResult.Failed(), client);
         }
-        public TcpReceiveResult(byte[] buffer, int size, TcpClient client, bool success = true) 
+        public TcpReceiveResult(byte[] buffer, int size, ClientTcp client, bool success = true) 
         {
             this.client = client;
             this.buffer = buffer;
@@ -49,7 +49,7 @@ namespace Network
             this.success = success;
             this.socketType = SocketType.Stream;
         }
-        public TcpReceiveResult(ReceiveResult rr, TcpClient client)
+        public TcpReceiveResult(ReceiveResult rr, ClientTcp client)
         {
             this.client = client;
             success= rr.success;
@@ -62,6 +62,6 @@ namespace Network
         public readonly byte[] buffer;
         public readonly int size;
         public readonly SocketType socketType;
-        public readonly TcpClient client;
+        public readonly ClientTcp client;
     }
 }

@@ -56,9 +56,9 @@ namespace Network
             }
         }
 
-        public override void Send(byte[] buffer, int size)
+        public override void Send(byte[] buffer)
         {   
-            udp.Send(buffer, size);
+            udp.Send(buffer, buffer.Length);
         }
 
        /* public override void SendFile(string file, byte[] preBuffer = null, byte[] postBuffer = null, TransmitFileOptions flags = 0)

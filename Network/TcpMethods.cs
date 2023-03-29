@@ -11,7 +11,7 @@ namespace TcpMethods
 {
     internal static class Tcp
     {
-        public static async Task<TcpReceiveResult> ReceiveAsync(TcpClient client, int bufferSize, CancellationToken token)
+        public static async Task<TcpReceiveResult> ReceiveAsync(ClientTcp client, int bufferSize, CancellationToken token)
         { 
             byte[] buffer = new byte[bufferSize];
             //int totalBytes = 0;
@@ -44,33 +44,33 @@ namespace TcpMethods
         }
 
 
-        public static void Send(byte[] buffer, TcpClient client, Action<long, IPEndPoint> onSend)
+        public static void Send(byte[] buffer, ClientTcp client, Action<long, IPEndPoint> onSend = null)
         {
             var stream = client.GetStream();
             stream.Write(buffer, 0, buffer.Length);
-            onSend?.Invoke(buffer.LongLength, client.Client.RemoteEndPoint as IPEndPoint);
+            onSend?.Invoke(buffer.LongLength, client.client.Client.RemoteEndPoint as IPEndPoint);
         }
-        public static async Task SendAsync(byte[] buffer, TcpClient client, Stream stream, Action<long, IPEndPoint> onSend)
+        public static async Task SendAsync(byte[] buffer, ClientTcp client, Action<long, IPEndPoint> onSend = null)
         {
-            await stream.WriteAsync(buffer, 0, buffer.Length);
-            onSend?.Invoke(buffer.LongLength, client.Client.RemoteEndPoint as IPEndPoint);
+            await client.GetStream().WriteAsync(buffer, 0, buffer.Length);
+            onSend?.Invoke(buffer.LongLength, client.client.Client.RemoteEndPoint as IPEndPoint);
         }
 
 
-        public static async Task SendFileAsync(string file, TcpClient client, int bufferSize, Action<long, IPEndPoint> onSend,
-        long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public static async Task SendFileAsync(string file, ClientTcp client, int bufferSize, long offset, 
+            long? end = null, Action<long, IPEndPoint> onSend = null, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             if(client == null)
                 return;
             FileStream fs = File.OpenRead(file);
-            NetworkStream ns = client.GetStream();
+            Stream netStream = client.GetStream();
 
             Task sendPreBufferTask = Task.CompletedTask;
             long bytesSent = 0;
             try{
                 if(preBuffer != null)
                 {
-                    sendPreBufferTask = ns.WriteAsync(preBuffer, 0, preBuffer.Length);
+                    sendPreBufferTask = netStream.WriteAsync(preBuffer, 0, preBuffer.Length);
                 }
                             
                 long fileSize = 0;
@@ -90,14 +90,14 @@ namespace TcpMethods
                     int readBytes = await fs.ReadAsync(buffer, 0, buffer.Length);
                     if(readBytes == 0)
                         break;
-                    await ns.WriteAsync(buffer, 0, readBytes);
+                    await netStream.WriteAsync(buffer, 0, readBytes);
                     totalReadBytes += readBytes;
                     bytesSent += readBytes;
                 }while(totalReadBytes < fileSize);
                     
                 if(postBuffer != null)
                 {
-                    await ns.WriteAsync(postBuffer, 0, postBuffer.Length);
+                    await netStream.WriteAsync(postBuffer, 0, postBuffer.Length);
                     bytesSent += postBuffer.Length;
                 }
             }catch(IOException){
@@ -107,7 +107,7 @@ namespace TcpMethods
             {
                 fs.Dispose(); 
                 fs.Close(); 
-                onSend?.Invoke(bytesSent, client.Client.RemoteEndPoint as IPEndPoint);
+                onSend?.Invoke(bytesSent, client.client.Client.RemoteEndPoint as IPEndPoint);
             }
         }
     }

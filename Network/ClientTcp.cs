@@ -59,24 +59,24 @@ namespace Network
             }
         }
 
-        public override void Send(byte[] buffer, int bufferSize)
+        public override void Send(byte[] buffer)
         {
-            Tcp.Send(buffer, client, onSend);
+            Tcp.Send(buffer, this, onSend);
         }
-        public Task SendAsync(byte[] buffer, int bufferSize)
+        public Task SendAsync(byte[] buffer)
         {
-            return Tcp.SendAsync(buffer, client, onSend);
+            return Tcp.SendAsync(buffer, this, onSend);
         }
 
         public Task SendFile(string file, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-           return Tcp.SendFileAsync(file, client, bufferSize, onSend, offset, end, preBuffer, postBuffer);
+           return Tcp.SendFileAsync(file, this, bufferSize, offset, end, onSend, preBuffer, postBuffer);
         }
 
 
         public override async Task<ReceiveResult> ReceiveAsync()
         {
-            return (await Tcp.ReceiveAsync(client, bufferSize, new System.Threading.CancellationToken())).CreateRegRR();
+            return (await Tcp.ReceiveAsync(this, bufferSize, new System.Threading.CancellationToken())).CreateRegRR();
         }
       
 
@@ -85,7 +85,11 @@ namespace Network
             Console.WriteLine("close on client");
             if(client != null)
             {
-                stream.Dispose();
+                try
+                {
+                    GetStream().Dispose();
+                }
+                catch (InvalidOperationException) { }
                 client.Dispose();
                 client.Close();
             }

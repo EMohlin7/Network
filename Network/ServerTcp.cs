@@ -16,8 +16,8 @@ namespace Network
         private TcpListener listener;   
         public int connectedClients {get => clients.Count;}
         public int numWaitingClients {get => waitingClients.Count;}
-        private List<TcpClient> clients = new List<TcpClient>();
-        private Queue<TcpClient> waitingClients = new Queue<TcpClient>(); 
+        private List<ClientTcp> clients = new List<ClientTcp>();
+        private Queue<ClientTcp> waitingClients = new Queue<ClientTcp>(); 
         public Action<IPEndPoint> onClientClosed;
         public Action clientAccepted;
         public bool listening {private set; get;}
@@ -67,7 +67,8 @@ namespace Network
                 {
                     if(listening && connectedClients+numWaitingClients < maxConnections)
                     {
-                        TcpClient client = listener.AcceptTcpClient();
+                        TcpClient c = listener.AcceptTcpClient();
+                        ClientTcp client = new ClientTcp(bufferSize, c, true);
                         //Accept(client);
                         ThreadPool.QueueUserWorkItem(Accept, client);
                     }
@@ -77,14 +78,15 @@ namespace Network
             catch(SocketException){return;}
         }
 
-        protected virtual void Accept(object tcpClient)
+        protected virtual void Accept(object clientTcp)
         {
-            TcpClient client = (TcpClient)tcpClient;
+            ClientTcp client = (ClientTcp)clientTcp;
+            
             waitingClients.Enqueue(client);
             clientAccepted?.Invoke();
         }
 
-        public bool FetchWaitingClient(out TcpClient client, int timeout)
+        public bool FetchWaitingClient(out ClientTcp client, int timeout)
         {
             if(!fetchMutex.WaitOne(timeout))
             {
@@ -92,7 +94,7 @@ namespace Network
                 return false;
             }
 
-            bool success = waitingClients.TryDequeue(out TcpClient c);
+            bool success = waitingClients.TryDequeue(out ClientTcp c);
             client = c;
             if(success)
                 clients.Add(client);
@@ -113,7 +115,7 @@ namespace Network
             return Tcp.ReceiveAsync(GetClient(ep), bufferSize, token);
         }
 
-        public async Task<TcpReceiveResult> ReceiveAsync(TcpClient client)
+        public async Task<TcpReceiveResult> ReceiveAsync(ClientTcp client)
         {
             if(client == null)
                 return TcpReceiveResult.Failed(client);
@@ -132,7 +134,7 @@ namespace Network
         }
         
 
-        public void Send(byte[] buffer, TcpClient client)
+        public void Send(byte[] buffer, ClientTcp client)
         {
             if(client == null)
                 throw new NullReferenceException("TcpClient is null");
@@ -148,7 +150,7 @@ namespace Network
                 throw new NullReferenceException("No client with that IPEndPoint exists");
             return SendAsync(buffer, client);
         }
-        public Task SendAsync(byte[] buffer, TcpClient client)
+        public Task SendAsync(byte[] buffer, ClientTcp client)
         {
             
             if (client == null)
@@ -161,19 +163,19 @@ namespace Network
             var client = GetClient(ep);
             return SendFileAsync(file, client, offset, end, preBuffer, postBuffer);
         }
-        public Task SendFileAsync(string file, TcpClient client, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public Task SendFileAsync(string file, ClientTcp client, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-            return Tcp.SendFileAsync(file, client, bufferSize, onSend, offset, end, preBuffer, postBuffer);
+            return Tcp.SendFileAsync(file, client, bufferSize, offset, end, onSend, preBuffer, postBuffer);
         }
 
-        public async Task SendFileToMultipleAsync(string file, TcpClient[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public async Task SendFileToMultipleAsync(string file, ClientTcp[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             Task[] tasks = new Task[clients.Length];
             try
             {
                 for(int i = 0; i < tasks.Length; ++i)
                 {
-                    tasks[i] = Tcp.SendFileAsync(file, clients[i], bufferSize, onSend, offset, end, preBuffer, postBuffer);
+                    tasks[i] = Tcp.SendFileAsync(file, clients[i], bufferSize, offset, end, onSend, preBuffer, postBuffer);
                 }
                 await Task.WhenAll(tasks);
             }
@@ -181,24 +183,27 @@ namespace Network
         }
         public Task SendFileToMultipleAsync(string file, IPEndPoint[] ep, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-            TcpClient[] clients = new TcpClient[ep.Length];
+            ClientTcp[] clients = new ClientTcp[ep.Length];
             for(int i = 0; i < clients.Length; ++i)
                 clients[i] = GetClient(ep[i]);
             return SendFileToMultipleAsync(file, clients, offset, end, preBuffer, postBuffer);
         }
-#endregion
 
-#region Disconnect
-        public void CloseClientSocket(TcpClient client, int timeout)
+        public Task SendFileToAllAsync(string file, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        {
+            return SendFileToMultipleAsync(file, clients.ToArray(), offset, end, preBuffer, postBuffer);
+        }
+        #endregion
+
+        #region Disconnect
+        public void CloseClientSocket(ClientTcp client, int timeout)
         {
             if (!closeMutex.WaitOne(timeout))
                 return;
             IPEndPoint ep = null;
             try{
-                ep = client?.Client?.RemoteEndPoint as IPEndPoint;
-                client.Dispose();
-                client.Close();
-
+                ep = client.client.Client.RemoteEndPoint as IPEndPoint;
+                client.Shutdown();
             }catch(NullReferenceException){} //Exception om socketen redan är stängd
             finally
             {
@@ -229,12 +234,12 @@ namespace Network
 #endregion
 
        
-        public TcpClient GetClient(IPEndPoint ep)
+        public ClientTcp GetClient(IPEndPoint ep)
         {   
             if(ep == null)
                 return null;
             
-            var client = clients.Find(c => c?.Client?.RemoteEndPoint.Equals(ep) ?? false);
+            var client = clients.Find(c => c?.client?.Client?.RemoteEndPoint.Equals(ep) ?? false);
             return client;
         }
     }

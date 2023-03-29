@@ -18,13 +18,14 @@ namespace Network
             this.cert = cert;
         }
 
-        protected override void Accept(object tcpClient)
+        protected override void Accept(object clientTcp)
         {
-            TcpClient client = (TcpClient)tcpClient;
+            ClientTcp client = (ClientTcp)clientTcp;
             SslStream sslStream = new SslStream(client.GetStream(), false);
             sslStream.AuthenticateAsServer(cert, clientCertificateRequired: false, checkCertificateRevocation: true);
+            ClientTcpSSL sslClient = new ClientTcpSSL(client.client, sslStream, true, bufferSize);
             
-            base.Accept(tcpClient);
+            base.Accept(sslClient);
         }
     }
 }
