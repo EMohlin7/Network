@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using TcpMethods;
@@ -7,12 +9,18 @@ using TcpMethods;
 namespace Network
 {
     public class ClientTcp : Client
-    {        
+    {
         public TcpClient client { private set; get; }
+        public virtual Stream GetStream() => client.GetStream();
         
         public ClientTcp(int bufferSize) : base(bufferSize) 
         {
 
+        }
+        public ClientTcp(int bufferSize, TcpClient client, bool connected) : base(bufferSize)
+        {
+            this.client = client;
+            this.connected = connected;
         }
         
         public override async Task<bool> Connect(string remoteIP, int remotePort)
@@ -77,6 +85,7 @@ namespace Network
             Console.WriteLine("close on client");
             if(client != null)
             {
+                stream.Dispose();
                 client.Dispose();
                 client.Close();
             }

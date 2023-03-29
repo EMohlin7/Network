@@ -10,7 +10,7 @@ namespace Network
         public IPEndPoint remoteEndpoint {private set; get;}
         public int simulatedServerToClientLatency;
         public int localPort {private set; get;}
-        public bool connected {private set; get;}
+        public bool connected {protected set; get;}
         protected int bufferSize {private set; get;}
         public Action onShutdown;
         public Action<long, IPEndPoint> onSend;

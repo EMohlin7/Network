@@ -50,9 +50,8 @@ namespace TcpMethods
             stream.Write(buffer, 0, buffer.Length);
             onSend?.Invoke(buffer.LongLength, client.Client.RemoteEndPoint as IPEndPoint);
         }
-        public static async Task SendAsync(byte[] buffer, TcpClient client, Action<long, IPEndPoint> onSend)
+        public static async Task SendAsync(byte[] buffer, TcpClient client, Stream stream, Action<long, IPEndPoint> onSend)
         {
-            var stream = client.GetStream();
             await stream.WriteAsync(buffer, 0, buffer.Length);
             onSend?.Invoke(buffer.LongLength, client.Client.RemoteEndPoint as IPEndPoint);
         }
