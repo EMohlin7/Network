@@ -12,8 +12,51 @@ namespace Network
         { 
             
         }
-        
-        public override async Task<bool> Connect(string remoteIP, int remotePort)
+
+        public override async Task<bool> Connect(string host, int remotePort)
+        {
+            try
+            {
+                if (connected)
+                    Shutdown();
+                udp = new UdpClient();
+                //För att inte få ett error när man försöker skicka till en socket som blivit avstängd
+                udp.Client.IOControl(-1744830452, new byte[1], new byte[1]);
+
+                udp.Connect(host, remotePort);
+                OnConnect(new DnsEndPoint(host, remotePort), (udp.Client.LocalEndPoint as IPEndPoint).Port);
+                await Task.CompletedTask;
+                return true;
+            }
+            catch (Exception)
+            {
+                Shutdown();
+                return false;
+            }
+        }
+        public override async Task<bool> Connect(string host, int remotePort, int localPort)
+        {
+            try
+            {
+                if (connected)
+                    Shutdown();
+                udp = new UdpClient(localPort);
+                //För att inte få ett error när man försöker skicka till en socket som blivit avstängd
+                udp.Client.IOControl(-1744830452, new byte[1], new byte[1]);
+
+                udp.Connect(host, remotePort);
+                OnConnect(new DnsEndPoint(host, remotePort), (udp.Client.LocalEndPoint as IPEndPoint).Port);
+                await Task.CompletedTask;
+                return true;
+            }
+            catch (Exception)
+            {
+                Shutdown();
+                return false;
+            }
+        }
+
+        public override async Task<bool> Connect(IPAddress ip, int remotePort)
         {
             try
             {
@@ -23,8 +66,8 @@ namespace Network
                 //För att inte få ett error när man försöker skicka till en socket som blivit avstängd
                 udp.Client.IOControl(-1744830452, new byte[1], new byte[1]);
 
-                udp.Connect(remoteIP, remotePort);
-                OnConnect(remoteIP, remotePort, (udp.Client.LocalEndPoint as IPEndPoint).Port);
+                udp.Connect(ip, remotePort);
+                OnConnect(new DnsEndPoint(ip.ToString(), remotePort), (udp.Client.LocalEndPoint as IPEndPoint).Port);
                 await Task.CompletedTask;
                 return true;
             }
@@ -34,7 +77,7 @@ namespace Network
                 return false;
             }
         }
-        public override async Task<bool> Connect(string remoteIP, int remotePort, int localPort)
+        public override async Task<bool> Connect(IPAddress ip, int remotePort, int localPort)
         {
             try
             {
@@ -44,8 +87,8 @@ namespace Network
                 //För att inte få ett error när man försöker skicka till en socket som blivit avstängd
                 udp.Client.IOControl(-1744830452, new byte[1], new byte[1]);
 
-                udp.Connect(remoteIP, remotePort);
-                OnConnect(remoteIP, remotePort, localPort);
+                udp.Connect(ip, remotePort);
+                OnConnect(new DnsEndPoint(ip.ToString(), remotePort), (udp.Client.LocalEndPoint as IPEndPoint).Port);
                 await Task.CompletedTask;
                 return true;
             }

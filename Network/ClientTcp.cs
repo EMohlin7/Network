@@ -22,16 +22,51 @@ namespace Network
             this.client = client;
             this.connected = connected;
         }
-        
-        public override async Task<bool> Connect(string remoteIP, int remotePort)
+
+        public override async Task<bool> Connect(string host, int remotePort)
+        {
+            try
+            {
+                if (connected)
+                    Shutdown();
+                client = new TcpClient(AddressFamily.InterNetwork);
+                await client.ConnectAsync(host, remotePort);
+                OnConnect(new DnsEndPoint(host, (client.Client.RemoteEndPoint as IPEndPoint).Port), (client.Client.LocalEndPoint as IPEndPoint).Port);
+                return true;
+            }
+            catch (Exception)
+            {
+                Shutdown();
+                return false;
+            }
+        }
+        public override async Task<bool> Connect(string host, int remotePort, int localPort)
+        {
+            try
+            {
+                if (connected)
+                    Shutdown();
+                client = new TcpClient(new IPEndPoint(IPAddress.Any, localPort));
+                await client.ConnectAsync(host, remotePort);
+                OnConnect(new DnsEndPoint(host, (client.Client.RemoteEndPoint as IPEndPoint).Port), localPort);
+                return true;
+            }
+            catch (Exception)
+            {
+                Shutdown();
+                return false;
+            }
+        }
+
+        public override async Task<bool> Connect(IPAddress ip, int remotePort)
         {
             try
             {
                 if(connected)
                     Shutdown();
                 client = new TcpClient(AddressFamily.InterNetwork);
-                await client.ConnectAsync(IPAddress.Parse(remoteIP), remotePort);
-                OnConnect(remoteIP, remotePort, (client.Client.LocalEndPoint as IPEndPoint).Port);
+                await client.ConnectAsync(ip, remotePort);
+                OnConnect(new DnsEndPoint(ip.ToString(), (client.Client.RemoteEndPoint as IPEndPoint).Port), (client.Client.LocalEndPoint as IPEndPoint).Port);
                 return true;
             }
             catch(Exception) 
@@ -41,15 +76,15 @@ namespace Network
             }
         }
 
-        public override async Task<bool> Connect(string remoteIP, int remotePort, int localPort)
+        public override async Task<bool> Connect(IPAddress ip, int remotePort, int localPort)
         {
             try
             {
                 if(connected)
                     Shutdown();
                 client = new TcpClient(new IPEndPoint(IPAddress.Any, localPort));
-                await client.ConnectAsync(IPAddress.Parse(remoteIP), remotePort);
-                OnConnect(remoteIP, remotePort, localPort);
+                await client.ConnectAsync(ip, remotePort);
+                OnConnect(new DnsEndPoint(ip.ToString(), (client.Client.RemoteEndPoint as IPEndPoint).Port), localPort);
                 return true;
             }
             catch(Exception) 
@@ -82,7 +117,6 @@ namespace Network
 
         public override void Shutdown()
         {
-            Console.WriteLine("close on client");
             if(client != null)
             {
                 try

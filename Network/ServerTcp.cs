@@ -204,12 +204,11 @@ namespace Network
             try{
                 ep = client.client.Client.RemoteEndPoint as IPEndPoint;
                 client.Shutdown();
-            }catch(NullReferenceException){} //Exception om socketen redan är stängd
+            }catch(NullReferenceException){} 
             finally
             {
                 if(client != null)
                 {
-                    //Interlocked.Decrement(ref connectedClients);
                     clients.Remove(client);
                     closeMutex.ReleaseMutex();
               

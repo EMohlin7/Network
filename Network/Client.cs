@@ -7,7 +7,7 @@ namespace Network
 {
     public abstract class Client
     {
-        public IPEndPoint remoteEndpoint {private set; get;}
+        public DnsEndPoint remoteEndpoint {private set; get;}
         public int simulatedServerToClientLatency;
         public int localPort {private set; get;}
         public bool connected {protected set; get;}
@@ -20,11 +20,13 @@ namespace Network
             this.bufferSize = bufferSize;
         }
 
-        public abstract Task<bool> Connect(string remoteIP, int remotePort);
-        public abstract Task<bool> Connect(string remoteIP, int remotePort, int localPort);
-        protected void OnConnect(string remoteIP, int remotePort, int localPort)
+        public abstract Task<bool> Connect(string host, int remotePort);
+        public abstract Task<bool> Connect(string host, int remotePort, int localPort);
+        public abstract Task<bool> Connect(IPAddress remoteIP, int remotePort);
+        public abstract Task<bool> Connect(IPAddress remoteIP, int remotePort, int localPort);
+        protected virtual void OnConnect(DnsEndPoint remoteEP, int localPort)
         {
-            remoteEndpoint = new IPEndPoint(IPAddress.Parse(remoteIP), remotePort);
+            remoteEndpoint = remoteEP;
             this.localPort = localPort;
             connected = true;
         }
