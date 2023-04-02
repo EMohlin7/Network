@@ -10,7 +10,8 @@ namespace Network
         private UdpClient udp;
         public ClientUdp(int bufferSize) : base(bufferSize) 
         { 
-            
+            udp.Client.ReceiveBufferSize = bufferSize;
+            udp.Client.SendBufferSize = bufferSize;
         }
 
         public override async Task<bool> Connect(string host, int remotePort)
@@ -99,20 +100,29 @@ namespace Network
             }
         }
 
-        public override void Send(byte[] buffer)
+        public override void Write(byte[] buffer)
         {   
             udp.Send(buffer, buffer.Length);
+            onSend?.Invoke(buffer.LongLength, udp.Client.RemoteEndPoint as IPEndPoint);
+        }
+        public override async Task WriteAsync(byte[] buffer)
+        {
+            await udp.SendAsync(buffer, buffer.Length);
+            onSend?.Invoke(buffer.LongLength, udp.Client.RemoteEndPoint as IPEndPoint);
         }
 
-       /* public override void SendFile(string file, byte[] preBuffer = null, byte[] postBuffer = null, TransmitFileOptions flags = 0)
-        {
-            udp.Client.SendFile(file, preBuffer, postBuffer, flags);
-        }*/
+
 
         public override async Task<ReceiveResult> ReceiveAsync()
         {
             var t = await udp.ReceiveAsync();
             return new ReceiveResult(t.Buffer, t.Buffer.Length, t.RemoteEndPoint, SocketType.Dgram);
+        }
+        public override ReceiveResult Receive()
+        {
+            IPEndPoint ep = new IPEndPoint(IPAddress.Any, 0);
+            byte[] bytes = udp.Receive(ref ep);
+            return new ReceiveResult(bytes, bytes.Length, ep, SocketType.Dgram);
         }
 
         public override void Shutdown()

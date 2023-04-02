@@ -12,17 +12,14 @@ namespace Network
 {
     public  class ClientTcpSSL : ClientTcp
     {
-        protected SslStream sslStream;
-        public override Stream GetStream() => sslStream;
-     
-        
-        public ClientTcpSSL(int bufferSize) : base(bufferSize)
+        public ClientTcpSSL(int bufferSize, bool buffered) : base(bufferSize, buffered)
         {
 
         }
-        public ClientTcpSSL(TcpClient client, SslStream stream, bool connected, int bufferSize) : base(bufferSize, client, connected) 
+        public ClientTcpSSL(TcpClient client, SslStream stream, bool connected, int bufferSize, bool buffered)
+            : base(bufferSize, client, stream, connected, buffered) 
         {
-            this.sslStream = stream;
+            
         }
 
         public override Task<bool> Connect(IPAddress ip, int remotePort)
@@ -36,8 +33,9 @@ namespace Network
 
         protected override void OnConnect(DnsEndPoint remoteEP, int localPort)
         {
-            sslStream = new SslStream(client.GetStream());
+            SslStream sslStream = new SslStream(client.GetStream());
             sslStream.AuthenticateAsClient(remoteEP.Host);
+            this.stream = sslStream;
             base.OnConnect(remoteEP, localPort);
         }
 

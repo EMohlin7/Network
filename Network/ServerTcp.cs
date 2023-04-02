@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using System.Collections.Generic;
-using TcpMethods;
 using System.IO;
 
 namespace Network
@@ -23,11 +22,14 @@ namespace Network
         public bool listening {private set; get;}
         public int maxConnections;
 
+        public bool buffered;
+
 #region Start
         
-        public ServerTcp(int maxConnections, int bufferSize) : base(bufferSize, maxConnections)
+        public ServerTcp(int maxConnections, int bufferSize, bool buffered) : base(bufferSize, maxConnections)
         {
             this.maxConnections = maxConnections;
+            this.buffered = buffered;
         }
 
         /// <summary>
@@ -68,7 +70,7 @@ namespace Network
                     if(listening && connectedClients+numWaitingClients < maxConnections)
                     {
                         TcpClient c = listener.AcceptTcpClient();
-                        ClientTcp client = new ClientTcp(bufferSize, c, true);
+                        ClientTcp client = new ClientTcp(bufferSize, c, true, buffered);
                         //Accept(client);
                         ThreadPool.QueueUserWorkItem(Accept, client);
                     }
@@ -102,96 +104,48 @@ namespace Network
             fetchMutex.ReleaseMutex();
             return success;
         }
-#endregion
+        #endregion
 
-#region Receive
-        
-        public Task<TcpReceiveResult> ReceiveAsync(IPEndPoint ep)
-        {
-            return Tcp.ReceiveAsync(GetClient(ep), bufferSize, new CancellationToken());
-        }
-        public Task<TcpReceiveResult> ReceiveAsync(IPEndPoint ep, CancellationToken token)
-        {
-            return Tcp.ReceiveAsync(GetClient(ep), bufferSize, token);
-        }
-
-        public async Task<TcpReceiveResult> ReceiveAsync(ClientTcp client)
-        {
-            if(client == null)
-                return TcpReceiveResult.Failed(client);
-            return await Tcp.ReceiveAsync(client, bufferSize, new CancellationToken());
-        }
-        
-#endregion
-
-#region Send
-        public override void Send(byte[] buffer, IPEndPoint ep)
-        {
-            var client = GetClient(ep);
-            if(client == null)
-                throw new NullReferenceException("No client with that IPEndPoint exists");
-            Send(buffer, client);
-        }
-        
-
-        public void Send(byte[] buffer, ClientTcp client)
-        {
-            if(client == null)
-                throw new NullReferenceException("TcpClient is null");
-            Tcp.Send(buffer, client, onSend);
-        }
+        #region Receive
 
 
 
-        public Task SendAsync(byte[] buffer, IPEndPoint ep)
+        #endregion
+
+        #region Send
+
+        public override void Write(byte[] buffer, IPEndPoint ep)
         {
-            var client = GetClient(ep);
-            if (client == null)
-                throw new NullReferenceException("No client with that IPEndPoint exists");
-            return SendAsync(buffer, client);
-        }
-        public Task SendAsync(byte[] buffer, ClientTcp client)
-        {
-            
-            if (client == null)
-                throw new NullReferenceException("TcpClient is null");
-            return Tcp.SendAsync(buffer, client, onSend);
+            ClientTcp client = GetClient(ep);
+            client.Write(buffer);
+            client.Flush();
         }
 
-        public Task SendFileAsync(string file, IPEndPoint ep, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
-        {
-            var client = GetClient(ep);
-            return SendFileAsync(file, client, offset, end, preBuffer, postBuffer);
-        }
-        public Task SendFileAsync(string file, ClientTcp client, long offset, long? end, byte[] preBuffer = null, byte[] postBuffer = null)
-        {
-            return Tcp.SendFileAsync(file, client, bufferSize, offset, end, onSend, preBuffer, postBuffer);
-        }
 
-        public async Task SendFileToMultipleAsync(string file, ClientTcp[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public async Task WriteFileToMultipleAsync(string file, ClientTcp[] clients, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             Task[] tasks = new Task[clients.Length];
             try
             {
                 for(int i = 0; i < tasks.Length; ++i)
                 {
-                    tasks[i] = Tcp.SendFileAsync(file, clients[i], bufferSize, offset, end, onSend, preBuffer, postBuffer);
+                    tasks[i] = clients[i].WriteFileAsync(file, offset, end, preBuffer, postBuffer);
                 }
                 await Task.WhenAll(tasks);
             }
             catch (SocketException){}
         }
-        public Task SendFileToMultipleAsync(string file, IPEndPoint[] ep, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public Task WriteFileToMultipleAsync(string file, IPEndPoint[] ep, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
             ClientTcp[] clients = new ClientTcp[ep.Length];
             for(int i = 0; i < clients.Length; ++i)
                 clients[i] = GetClient(ep[i]);
-            return SendFileToMultipleAsync(file, clients, offset, end, preBuffer, postBuffer);
+            return WriteFileToMultipleAsync(file, clients, offset, end, preBuffer, postBuffer);
         }
 
-        public Task SendFileToAllAsync(string file, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
+        public Task WriteFileToAllAsync(string file, int offset, int? end, byte[] preBuffer = null, byte[] postBuffer = null)
         {
-            return SendFileToMultipleAsync(file, clients.ToArray(), offset, end, preBuffer, postBuffer);
+            return WriteFileToMultipleAsync(file, clients.ToArray(), offset, end, preBuffer, postBuffer);
         }
         #endregion
 

@@ -27,16 +27,16 @@ namespace Network
         public abstract bool StartListening(int port, out string err);
         
 
-        public void SendToMultiple(byte[] buffer, IPEndPoint[] ep)
+        public void WriteToMultiple(byte[] buffer, IPEndPoint[] ep)
         {
             for(int i = 0; i < ep.Length; ++i)
             {
-                Send(buffer, ep[i]);
+                Write(buffer, ep[i]);
             }
         }
 
         
-        public abstract void Send(byte[] buffer, IPEndPoint ep);
+        public abstract void Write(byte[] buffer, IPEndPoint ep);
         
     
         public abstract void Shutdown();

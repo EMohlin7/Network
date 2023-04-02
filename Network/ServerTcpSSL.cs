@@ -12,8 +12,8 @@ namespace Network
 {
     public class ServerTcpSSL : ServerTcp
     {
-        private X509Certificate cert;
-        public ServerTcpSSL(X509Certificate2 cert, int maxConnections, int bufferSize) : base(maxConnections, bufferSize)
+        public readonly X509Certificate cert;
+        public ServerTcpSSL(X509Certificate2 cert, int maxConnections, int bufferSize, bool buffered) : base(maxConnections, bufferSize, buffered)
         {
             this.cert = cert;
         }
@@ -21,11 +21,11 @@ namespace Network
         protected override void Accept(object clientTcp)
         {
             ClientTcp client = (ClientTcp)clientTcp;
-            SslStream sslStream = new SslStream(client.GetStream(), false);
+            SslStream sslStream = new SslStream(client.client.GetStream(), false);
             sslStream.AuthenticateAsServer(cert, clientCertificateRequired: false, checkCertificateRevocation: true);
-            ClientTcpSSL sslClient = new ClientTcpSSL(client.client, sslStream, true, bufferSize);
+            client.stream = sslStream;
             
-            base.Accept(sslClient);
+            base.Accept(client);
         }
 
     }

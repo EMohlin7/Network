@@ -47,7 +47,7 @@ namespace Network
             return new ReceiveResult(t.Buffer, t.Buffer.Length, t.RemoteEndPoint, SocketType.Dgram);
         }
 
-        public override void Send(byte[] buffer, IPEndPoint ep)
+        public override void Write(byte[] buffer, IPEndPoint ep)
         {
             udp.Send(buffer, buffer.Length, ep);
             onSend?.Invoke(buffer.LongLength, ep);
