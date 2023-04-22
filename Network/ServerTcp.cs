@@ -88,9 +88,9 @@ namespace Network
             clientAccepted?.Invoke();
         }
 
-        public bool FetchWaitingClient(out ClientTcp client, int timeout)
+        public bool FetchWaitingClient(out ClientTcp client, int millisecondsTimeout)
         {
-            if(!fetchMutex.WaitOne(timeout))
+            if(!fetchMutex.WaitOne(millisecondsTimeout))
             {
                 client = null;
                 return false;
@@ -150,15 +150,15 @@ namespace Network
         #endregion
 
         #region Disconnect
-        public void CloseClientSocket(ClientTcp client, int timeout)
+        public void CloseClientSocket(ClientTcp client, int millisecondsTimeout)
         {
-            if (!closeMutex.WaitOne(timeout))
+            if (!closeMutex.WaitOne(millisecondsTimeout))
                 return;
             IPEndPoint ep = null;
             try{
                 ep = client.client.Client.RemoteEndPoint as IPEndPoint;
                 client.Shutdown();
-            }catch(NullReferenceException){} 
+            }catch{} 
             finally
             {
                 if(client != null)
