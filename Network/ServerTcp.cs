@@ -37,6 +37,7 @@ namespace Network
         /// </summary>
         /// <param name="port">The port to listen on</param>
         /// <param name="err">Returns the error if the server failed to start, otherwise null</param>
+        
         /// <returns>True if the server succesfully started listening for incoming connections, otherwise false</returns>
         public override bool StartListening(int port, out string err)
         {
@@ -82,6 +83,8 @@ namespace Network
 
         protected virtual void Accept(object clientTcp)
         {
+            if(clientTcp == null) 
+                return;
             ClientTcp client = (ClientTcp)clientTcp;
             
             waitingClients.Enqueue(client);

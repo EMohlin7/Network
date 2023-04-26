@@ -21,4 +21,10 @@
     <ProjectReference Include="..\Network\Network_dotnet5.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="HTTPParser">
+      <HintPath>..\..\..\ObsServer\dlls\httpparser\HTTPParser.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

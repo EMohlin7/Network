@@ -44,7 +44,7 @@ namespace Network
         public async Task<ReceiveResult> ReceiveAsync()
         {
             var t = await udp.ReceiveAsync();
-            return new ReceiveResult(t.Buffer, t.Buffer.Length, t.RemoteEndPoint, SocketType.Dgram);
+            return new ReceiveResult(t.Buffer, t.Buffer.Length, t.RemoteEndPoint, SocketType.Dgram, udp.Available > 0);
         }
 
         public override void Write(byte[] buffer, IPEndPoint ep)

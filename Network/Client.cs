@@ -17,6 +17,8 @@ namespace Network
         public Action<long, IPEndPoint> onSend;
         public Action<DnsEndPoint> onConnect;
 
+        protected Socket socket;
+
         public Client(int bufferSize)
         {
             this.bufferSize = bufferSize;
@@ -26,11 +28,15 @@ namespace Network
         public abstract Task<bool> Connect(string host, int remotePort, int localPort);
         public abstract Task<bool> Connect(IPAddress remoteIP, int remotePort);
         public abstract Task<bool> Connect(IPAddress remoteIP, int remotePort, int localPort);
-        protected virtual void OnConnect(DnsEndPoint remoteEP, int localPort)
+        protected void SetConnectionInfo(DnsEndPoint remoteEP, int localPort)
         {
             remoteEndpoint = remoteEP;
             this.localPort = localPort;
             connected = true;
+        }
+        protected virtual void OnConnect(DnsEndPoint remoteEP, int localPort)
+        {
+            SetConnectionInfo(remoteEP, localPort);
             onConnect?.Invoke(remoteEP);
         }
 

@@ -86,6 +86,11 @@ namespace Network
             }
 
             public Stream GetStream() => tcp.buffered ? bufStream : internalStream;
+           /*( public long GetStreamLength()
+            {
+                StreamWrapper sw = tcp.buffered ? bufStream.UnderlyingStream as StreamWrapper : internalStream;
+                return sw.stream is SslStream ? ((SslStream)sw.stream).Length : sw.stream.Length();
+            }*/
         }
         protected StreamHandler sh;
 
@@ -122,7 +127,7 @@ namespace Network
             {
                 stream = client.GetStream();
                 IPEndPoint ep = client.Client.RemoteEndPoint as IPEndPoint;
-                OnConnect(new DnsEndPoint(ep.Address.ToString(), ep.Port), (client.Client.LocalEndPoint as IPEndPoint).Port);
+                SetConnectionInfo(new DnsEndPoint(ep.Address.ToString(), ep.Port), (client.Client.LocalEndPoint as IPEndPoint).Port);
             }
         }
         public ClientTcp(int bufferSize, TcpClient client, Stream stream, bool connected, bool buffered) : base(bufferSize)
@@ -130,10 +135,11 @@ namespace Network
             this.client = client;
             this.stream = stream;
             this.buffered = buffered;
+        
             if (connected)
             {
                 IPEndPoint ep = client.Client.RemoteEndPoint as IPEndPoint;
-                OnConnect(new DnsEndPoint(ep.Address.ToString(), ep.Port), (client.Client.LocalEndPoint as IPEndPoint).Port);
+                SetConnectionInfo(new DnsEndPoint(ep.Address.ToString(), ep.Port), (client.Client.LocalEndPoint as IPEndPoint).Port);
             }
         }
 
@@ -331,7 +337,11 @@ namespace Network
         }
         public void Flush()
         {
-            stream.Flush(); 
+            try
+            {
+                stream.Flush();
+            }
+            catch (ObjectDisposedException) { }
         }
 
 
@@ -342,15 +352,10 @@ namespace Network
             {
 
                 var stream = this.stream;
-                //do
-                //{          
-
+                
                 int bytes = stream.Read(buffer, 0, bufferSize);
 
-                // }while(bytes == 0);
-                byte[] result = new byte[bytes];
-                Array.Copy(buffer, result, bytes);
-                return new ReceiveResult(result, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream);
+                return new ReceiveResult(buffer, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream, bytes >= bufferSize);
             }
             catch (Exception e) when (RecExFilter(e)) { return ReceiveResult.Failed(); }
         }
@@ -369,7 +374,7 @@ namespace Network
                 // }while(bytes == 0);
                 byte[] result = new byte[bytes];
                 Array.Copy(buffer, result, bytes);
-                return new ReceiveResult(result, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream);
+                return new ReceiveResult(result, bytes, client.Client.RemoteEndPoint as IPEndPoint, SocketType.Stream, bytes >= bufferSize);
             }
             catch (Exception e) when (RecExFilter(e)) { return ReceiveResult.Failed(); }
         }
@@ -391,7 +396,6 @@ namespace Network
                     sh?.Dispose();
                 }
                 catch (InvalidOperationException) { }
-                client.Dispose();
                 client.Close();
             }
 

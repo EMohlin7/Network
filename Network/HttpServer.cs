@@ -15,29 +15,37 @@ namespace Network
 {
     public class HttpServer
     {
-        public string fileDirectory;
+#nullable enable
+        public string? fileDirectory;
         public ServerTcp server;
         public readonly bool encrypted = false;
 
+        private AutoResetEvent threadWait = new AutoResetEvent(false);
+
         public delegate void requestHandler(Request request, ReceiveResult receiveResult, ClientTcp client);
 
-        public Action<ReceiveResult, Request> receivedRequest;
+        public Action<ReceiveResult, Request>? receivedRequest;
 
-        public Dictionary<string, requestHandler> getDict;
-        public Dictionary<string, requestHandler> headDict;
-        public Dictionary<string, requestHandler> postDict;
-        public Dictionary<string, requestHandler> putDict;
-        public Dictionary<string, requestHandler> deleteDict;
-        public Dictionary<string, requestHandler> connectDict;
-        public Dictionary<string, requestHandler> optionsDict;
-        public Dictionary<string, requestHandler> traceDict;
-        public Dictionary<string, requestHandler> patchDict;
+        public Dictionary<string, requestHandler> getDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> headDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> postDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> putDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> deleteDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> connectDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> optionsDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> traceDict = new Dictionary<string, requestHandler>();
+        public Dictionary<string, requestHandler> patchDict = new Dictionary<string, requestHandler>();
 
-        private Dictionary<string, Dictionary<string, requestHandler>> methods;
+        private Dictionary<string, Dictionary<string, requestHandler>> methods = new Dictionary<string, Dictionary<string, requestHandler>>();
 
 
-        private void Constructor(string fileDirectory, int maxConnections, int bufferSize, bool buffered)
+
+
+        private void Constructor(string? fileDirectory, int maxConnections, int bufferSize)
         {
+            this.fileDirectory = fileDirectory;
+
+            //Not case sensitive
             methods = new Dictionary<string, Dictionary<string, requestHandler>>(StringComparer.InvariantCultureIgnoreCase)
             {
                 {"GET", getDict },
@@ -51,31 +59,37 @@ namespace Network
                 {"PATCH", patchDict}
             };
         }
-        public HttpServer(string fileDirectory, int maxConnections, int bufferSize, bool buffered)
+        public HttpServer(string? fileDirectory, int maxConnections, int bufferSize, bool buffered)
         {
-            this.fileDirectory = fileDirectory;
             server = new ServerTcp(maxConnections, bufferSize, buffered);
+            Constructor(fileDirectory, maxConnections, bufferSize);
         }
 
-        public HttpServer(string fileDirectory, int maxConnections, int bufferSize, bool buffered, X509Certificate2 sslCert)
+        public HttpServer(string? fileDirectory, int maxConnections, int bufferSize, bool buffered, X509Certificate2 sslCert)
         {
-            this.fileDirectory = fileDirectory;
             server = new ServerTcpSSL(sslCert, maxConnections, bufferSize, buffered);
+            encrypted = true;
+            Constructor(fileDirectory, maxConnections, bufferSize);
         }
-
-        public void StartServer(int port)
+#nullable disable
+        public void StartServer(int port, bool background)
         {
             Thread t = new Thread(_startServer);
-            t.IsBackground = false;
+            t.IsBackground = background;
             t.Start(port);
         }
 
-        public void _startServer(object port)
+        private void _startServer(object port)
         {
             server.StartListening((int)port, out string err);
             server.clientAccepted += OnClientAccepted;
-            
-            
+            threadWait.WaitOne();
+        }
+
+        public void StopServer()
+        {
+            server.Shutdown();
+            threadWait.Set();
         }
 
         private void OnClientAccepted()
@@ -83,7 +97,7 @@ namespace Network
             if (!server.FetchWaitingClient(out ClientTcp client, -1))
                 return;
 
-            if (client != null) { return; }
+            if (client == null) { return; }
             ReceiveResult rr;
             do
             {
@@ -94,11 +108,11 @@ namespace Network
                     rr = client.Receive();
                     long currLenght = result.LongLength;
                     result = new byte[currLenght + rr.size];
-                    rr.buffer.CopyTo(result, currLenght);
-                } while (rr.size != 0);
-                rr = new ReceiveResult(rr.buffer, rr.size, rr.remoteEndPoint, rr.socketType, rr.success);
+                    Array.Copy(rr.buffer, 0, result, currLenght, rr.size);
+                } while (rr.remainingData);
+                rr = new ReceiveResult(result, rr.size, rr.remoteEndPoint, rr.socketType, rr.success);
             } while (OnReceive(rr, client));
-        
+
             server.CloseClientSocket(client, -1);
         }
 
@@ -111,19 +125,19 @@ namespace Network
             {
                 return false;
             }
-            
+
             //TODO: Change this
             string receivedMsg = Encoding.UTF8.GetString(rr.buffer);
-            
+
             Request req = new Request(receivedMsg);
             if (req == null)
                 return false;
 
             receivedRequest?.Invoke(rr, req);
 
-            
+
             bool keepAlive = req.TryGetHeader("Connection", out string con) && con == "keep-alive";
-           
+
             var res = new Response(200);
 
 
@@ -135,7 +149,7 @@ namespace Network
             {
                 if (requestHandlers.TryGetValue(req.element, out requestHandler value))
                     value.Invoke(req, rr, client);
-                else
+                else if (fileDirectory != null)
                 {
                     if (!VerifyPathInDirectory(req.element))
                         throw new DirectoryNotFoundException($"The requested element: {req.element} was outside the given directory");
@@ -147,10 +161,10 @@ namespace Network
                     }
                     client.WriteFile(fileDirectory + req.element, 0, null, Encoding.UTF8.GetBytes(res.GetMsg()));
                 }
-                
+
             }
             catch (Exception e) when (ExceptionFilter(e, client, rr)) { return false; }
-            finally { client.Flush(); }
+            finally { try { client.Flush(); } catch (IOException) { } }
 
             return keepAlive;
         }
@@ -175,6 +189,8 @@ namespace Network
 
         private bool VerifyPathInDirectory(string pathToVerify)
         {
+            if (fileDirectory == null)
+                return false;
             var fullRoot = Path.GetFullPath(fileDirectory);
             var fullPathToVerify = Path.GetFullPath(pathToVerify);
             return fullPathToVerify.StartsWith(fullRoot);
@@ -183,6 +199,48 @@ namespace Network
         private long GetFileSize(string file)
         {
             return new FileInfo(file).Length;
+        }
+
+        public void CloseClient(ClientTcp client, int timeoutMilliseconds)
+        {
+            server.CloseClientSocket(client, timeoutMilliseconds);
+        }
+
+        public void Get(string element, requestHandler handler)
+        {
+            getDict.Add(element, handler);
+        }
+        public void Head(string element, requestHandler handler)
+        {
+            headDict.Add(element, handler);
+        }
+        public void Post(string element, requestHandler handler)
+        {
+            postDict.Add(element, handler);
+        }
+        public void Put(string element, requestHandler handler)
+        {
+            putDict.Add(element, handler);
+        }
+        public void Delete(string element, requestHandler handler)
+        {
+            deleteDict.Add(element, handler);
+        }
+        public void Connect(string element, requestHandler handler)
+        {
+            connectDict.Add(element, handler);
+        }
+        public void Options(string element, requestHandler handler)
+        {
+            optionsDict.Add(element, handler);
+        }
+        public void Trace(string element, requestHandler handler)
+        {
+            traceDict.Add(element, handler);
+        }
+        public void Patch(string element, requestHandler handler)
+        {
+            patchDict.Add(element, handler);
         }
     }
 }
