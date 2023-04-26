@@ -126,11 +126,10 @@ namespace Network
                 return false;
             }
 
-            //TODO: Change this
             string receivedMsg = Encoding.UTF8.GetString(rr.buffer);
 
-            Request req = new Request(receivedMsg);
-            if (req == null)
+            
+            if (!Request.TryParseMsg(receivedMsg, out Request req))
                 return false;
 
             receivedRequest?.Invoke(rr, req);

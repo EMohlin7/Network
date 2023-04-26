@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <Reference Include="HTTPParser">
-      <HintPath>..\..\..\ObsServer\dlls\httpparser\HTTPParser.dll</HintPath>
+      <HintPath>..\..\HTTPParser\bin\Release\net5.0\HTTPParser.dll</HintPath>
     </Reference>
   </ItemGroup>
 
