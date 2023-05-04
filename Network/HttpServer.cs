@@ -127,7 +127,7 @@ namespace Network
             }
 
             string receivedMsg = Encoding.UTF8.GetString(rr.buffer);
-
+            Console.WriteLine(receivedMsg);
             
             if (!Request.TryParseMsg(receivedMsg, out Request req))
                 return false;
@@ -146,6 +146,7 @@ namespace Network
 
             try
             {
+
                 if (requestHandlers.TryGetValue(req.element, out requestHandler value))
                     value.Invoke(req, rr, client);
                 else if (fileDirectory != null)
@@ -160,7 +161,10 @@ namespace Network
                     }
                     client.WriteFile(fileDirectory + req.element, 0, null, Encoding.UTF8.GetBytes(res.GetMsg()));
                 }
-
+                else
+                {
+                    Send404(client);
+                }
             }
             catch (Exception e) when (ExceptionFilter(e, client, rr)) { return false; }
             finally { try { client.Flush(); } catch (IOException) { } }
@@ -171,19 +175,25 @@ namespace Network
         {
             if (e is SocketException)
             {
-                var s = e as SocketException;
-                Console.WriteLine("Socket exception code: " + s.ErrorCode);
                 return true;
             }
             else if (e is DirectoryNotFoundException || e is FileNotFoundException || e is UnauthorizedAccessException)
             {
-                byte[] code = System.Text.Encoding.UTF8.GetBytes("HTTP/1.1 404 not found \r\n\r\n");
-                client.Write(code);
-                Console.WriteLine(e.Message);
+                try
+                {
+                    Send404(client);
+                }
+                catch (Exception) { }
                 return true;
             }
 
             return false;
+        }
+
+        private static void Send404(ClientTcp client)
+        {
+            byte[] code = System.Text.Encoding.UTF8.GetBytes("HTTP/1.1 404 not found \r\n\r\n");
+            client.Write(code);
         }
 
         private bool VerifyPathInDirectory(string pathToVerify)

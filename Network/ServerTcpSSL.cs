@@ -30,7 +30,7 @@ namespace Network
                 client = new ClientTcpSSL(c.client, sslStream, true, bufferSize, buffered);
 
             }
-            catch (Exception ex) when(ex is AuthenticationException || ex is IOException)            
+            catch (Exception)         
             {
                 client?.Shutdown();
                 c.Shutdown();
