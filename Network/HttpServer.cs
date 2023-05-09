@@ -2,14 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.Unicode;
 using System.Threading;
 
-using System.Threading.Tasks;
 
 namespace Network
 {
@@ -101,7 +98,6 @@ namespace Network
             ReceiveResult rr;
             do
             {
-
                 byte[] result = new byte[0];
                 do
                 {
@@ -146,15 +142,17 @@ namespace Network
 
             try
             {
-
-                if (requestHandlers.TryGetValue(req.element, out requestHandler value))
+                //First check if everything should be handled by one delegate
+                if (requestHandlers.TryGetValue("*", out requestHandler value))
+                    value.Invoke(req, rr, client);
+                else if (requestHandlers.TryGetValue(req.element, out value))
                     value.Invoke(req, rr, client);
                 else if (fileDirectory != null)
                 {
                     if (!VerifyPathInDirectory(req.element))
-                        throw new DirectoryNotFoundException($"The requested element: {req.element} was outside the given directory");
+                        Send404(client);
 
-                    if (keepAlive)
+                    else if (keepAlive)
                     {
                         res.SetHeader("Connection", "keep-alive");
                         res.SetHeader("Content-Length", GetFileSize(fileDirectory + req.element).ToString());
