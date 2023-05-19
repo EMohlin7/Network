@@ -123,7 +123,6 @@ namespace Network
             }
 
             string receivedMsg = Encoding.UTF8.GetString(rr.buffer);
-            Console.WriteLine(receivedMsg);
             
             if (!Request.TryParseMsg(receivedMsg, out Request req))
                 return false;
