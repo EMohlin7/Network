@@ -106,7 +106,7 @@ namespace Network
                     result = new byte[currLenght + rr.size];
                     Array.Copy(rr.buffer, 0, result, currLenght, rr.size);
                 } while (rr.remainingData);
-                rr = new ReceiveResult(result, rr.size, rr.remoteEndPoint, rr.socketType, rr.success);
+                rr = new ReceiveResult(result, result.Length, rr.remoteEndPoint, rr.socketType, rr.success);
             } while (OnReceive(rr, client));
 
             server.CloseClientSocket(client, -1);
@@ -148,9 +148,11 @@ namespace Network
                     value.Invoke(req, rr, client);
                 else if (fileDirectory != null)
                 {
-                    if (!VerifyPathInDirectory(req.element))
+                    if (!VerifyPathInDirectory(fileDirectory + req.element))
+                    {
                         Send404(client);
-
+                        return false;
+                    }
                     else if (keepAlive)
                     {
                         res.SetHeader("Connection", "keep-alive");
