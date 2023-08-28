@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Network_dotnet5", "Network_dotnet5.csproj", "{8781C3C8-B007-4DE4-BA80-59FB7E0D73BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Network_dotnet6", "Network_dotnet6.csproj", "{8781C3C8-B007-4DE4-BA80-59FB7E0D73BC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject1", "..\TestProject1\TestProject1.csproj", "{68B1B42F-403D-44A5-AA7D-F504F526AFB5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestProject1", "..\TestProject1\TestProject1.csproj", "{68B1B42F-403D-44A5-AA7D-F504F526AFB5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HTTPParser", "..\..\HTTPParser\HTTPParser.csproj", "{D01BA16E-137B-41A0-810D-B80E3BD9C488}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{68B1B42F-403D-44A5-AA7D-F504F526AFB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68B1B42F-403D-44A5-AA7D-F504F526AFB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68B1B42F-403D-44A5-AA7D-F504F526AFB5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D01BA16E-137B-41A0-810D-B80E3BD9C488}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D01BA16E-137B-41A0-810D-B80E3BD9C488}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D01BA16E-137B-41A0-810D-B80E3BD9C488}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D01BA16E-137B-41A0-810D-B80E3BD9C488}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

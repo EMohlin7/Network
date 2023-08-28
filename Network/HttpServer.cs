@@ -58,6 +58,7 @@ namespace Network
         }
         public HttpServer(string? fileDirectory, int maxConnections, int bufferSize, bool buffered)
         {
+            encrypted = false;
             server = new ServerTcp(maxConnections, bufferSize, buffered);
             Constructor(fileDirectory, maxConnections, bufferSize);
         }
@@ -129,16 +130,10 @@ namespace Network
 
             receivedRequest?.Invoke(rr, req);
 
-
-            bool keepAlive = req.TryGetHeader("Connection", out string con) && con == "keep-alive";
-
-            var res = new Response(200);
-
-
             if (!methods.TryGetValue(req.method, out var requestHandlers))
                 return false;
 
-
+            bool keepAlive = req.TryGetHeader("Connection", out string con) && con == "keep-alive";
             try
             {
                 //First check if everything should be handled by one delegate
@@ -146,19 +141,22 @@ namespace Network
                     value.Invoke(req, rr, client);
                 else if (requestHandlers.TryGetValue(req.element, out value))
                     value.Invoke(req, rr, client);
-                else if (fileDirectory != null)
+                else if (req.method.ToLower() == "get" && fileDirectory != null)
                 {
-                    if (!VerifyPathInDirectory(fileDirectory + req.element))
-                    {
-                        Send404(client);
-                        return false;
-                    }
-                    else if (keepAlive)
+                    var res = new Response(200);
+                    FileInfo fi = new FileInfo(fileDirectory + req.element);
+                    long fileLength = fi.Length;
+                    if (keepAlive)
                     {
                         res.SetHeader("Connection", "keep-alive");
-                        res.SetHeader("Content-Length", GetFileSize(fileDirectory + req.element).ToString());
                     }
-                    client.WriteFile(fileDirectory + req.element, 0, null, Encoding.UTF8.GetBytes(res.GetMsg()));
+                    res.SetHeader("Content-Length", fileLength.ToString());
+                    res.SetHeader("Content-Type", GetTypeDir(req)+$"/{fi.Extension.TrimStart('.')}");
+                    res.SetHeader("Accept-Ranges", "bytes");
+                    GetRange(req, out long start, out long? end);
+                    
+                    res.SetHeader("Content-Range", string.Format("bytes {0}-{1}/{2}", start, end ?? fileLength - 1, fileLength));
+                    client.WriteFile(fileDirectory + req.element, start, end, Encoding.UTF8.GetBytes(res.GetMsg()));
                 }
                 else
                 {
@@ -166,7 +164,7 @@ namespace Network
                 }
             }
             catch (Exception e) when (ExceptionFilter(e, client, rr)) { return false; }
-            finally { try { client.Flush(); } catch (IOException) { } }
+            finally { try { if(client.buffered) client.Flush(); } catch (IOException) { } }
 
             return keepAlive;
         }
@@ -193,6 +191,39 @@ namespace Network
         {
             byte[] code = System.Text.Encoding.UTF8.GetBytes("HTTP/1.1 404 not found \r\n\r\n");
             client.Write(code);
+        }
+
+        //Default is text
+        private string GetTypeDir(Request req)
+        {
+            string[] s = req.method.Split('/');
+            if (s.Length > 1)
+                return s[0];
+            else
+                return "text";
+        }
+
+        private bool GetRange(Request req, out long start, out long? end)
+        {
+            start = 0;
+            end = null;
+            if (!req.HeaderExists("range"))
+            {
+                return false;
+            }
+
+            string[] bytes = req.GetHeader("range").Split("=")[1].Split("-");
+            if (!long.TryParse(bytes[0], out long val))
+            {
+                return false;
+            }
+            start = val;
+            if (bytes[1].Length > 0 && long.TryParse(bytes[1], out val))
+                end = val;
+            else
+                end = null;
+
+            return true;
         }
 
         private bool VerifyPathInDirectory(string pathToVerify)

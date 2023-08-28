@@ -1,15 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="HTTPParser">
-      <HintPath>..\..\HTTPParser\bin\Release\net5.0\HTTPParser.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\HTTPParser\HTTPParser.csproj" />
   </ItemGroup>
 
 </Project>

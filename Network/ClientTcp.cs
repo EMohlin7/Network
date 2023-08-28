@@ -217,9 +217,7 @@ namespace Network
 
         public override void Write(byte[] buffer)
         {
-            
-            stream.Write(buffer, 0, buffer.Length);
-            
+            stream.Write(buffer, 0, buffer.Length);   
         }
         public override async Task WriteAsync(byte[] buffer)
         {
